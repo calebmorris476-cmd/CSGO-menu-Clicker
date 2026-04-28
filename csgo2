@@ -1,4 +1,3 @@
-window["__f__moj576wg.b0g"] = function(){with (this) {(async (u, { p, r, s }) => {try {r(u, s, [undefined,undefined,undefined,p.unsafeWindow,p.navigate,p.GM_info,p.GM]);} catch (e) {if (e.message && e.stack) {console.error("ERROR: Execution of script 'CSGO Clicker Mod Menu' failed! " + e.message);console.log(e.stack);} else {console.error(e);}}})(async function(define,module,exports,unsafeWindow,navigate,GM_info,GM) {
 // ==UserScript==
 // @name         CSGO Clicker Mod Menu
 // @namespace    https://github.com/sensejke
@@ -1634,6 +1633,3 @@ window["__f__moj576wg.b0g"] = function(){with (this) {(async (u, { p, r, s }) =>
     }
 
 })();
-}, seed)}
-//# sourceURL=chrome-extension://dhdgffkkebhmkfjojejmpbldmpobfkfo/userscript.html?name=CSGO-Clicker-Mod-Menu.user.js&id=90cf973c-2bf5-4f52-8271-b23e027a13a8
-}
