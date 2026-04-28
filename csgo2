@@ -1,0 +1,1639 @@
+window["__f__moj576wg.b0g"] = function(){with (this) {(async (u, { p, r, s }) => {try {r(u, s, [undefined,undefined,undefined,p.unsafeWindow,p.navigate,p.GM_info,p.GM]);} catch (e) {if (e.message && e.stack) {console.error("ERROR: Execution of script 'CSGO Clicker Mod Menu' failed! " + e.message);console.log(e.stack);} else {console.error(e);}}})(async function(define,module,exports,unsafeWindow,navigate,GM_info,GM) {
+// ==UserScript==
+// @name         CSGO Clicker Mod Menu
+// @namespace    https://github.com/sensejke
+// @version      1.5
+// @description  Cheats for CSGO Clicker
+// @author       sensejke
+// @match        https://csgo.mtsl.dk/*
+// @match        http://csgo.mtsl.dk/*
+// @match        https://csgo.mtsl.dk/
+// @match        http://csgo.mtsl.dk/
+// @match        *://csgo.mtsl.dk/*
+// @match        *://www.csgo.mtsl.dk/*
+// @match        *://localhost/*
+// @match        *://127.0.0.1/*
+// @match        file:///*
+// @license      MIT
+// @run-at       document-start
+// @grant        unsafeWindow
+// @grant        window.onurlchange
+// ==/UserScript==
+
+(function() {
+    'use strict';
+
+    // -------------------------------------------------------------------------
+    // 0. CRITICAL CLEANUP (Before anything else)
+    // -------------------------------------------------------------------------
+    try {
+        // Remove the problematic key that causes QuotaExceededError
+        localStorage.removeItem('console-history');
+
+        // Remove other non-essential keys if storage is full
+        if (JSON.stringify(localStorage).length > 4500000) {
+            console.warn("Storage nearly full! Cleaning up junk...");
+            const keep = ['localsave', 'localuser', 'shop', 'flags', 'backup', 'backupid'];
+            for (let i = localStorage.length - 1; i >= 0; i--) {
+                const key = localStorage.key(i);
+                if (!keep.includes(key)) localStorage.removeItem(key);
+            }
+        }
+    } catch(e) {
+        console.error("Storage Cleanup Failed:", e);
+    }
+
+    console.log("=== CSGO CLICKER MOD MENU v1.5 STARTING ===");
+
+    // Main logic wrapped in async function
+    async function initModMenu() {
+        const win = window.unsafeWindow || window; // Access real window
+
+        const loaderId = 'mod-loader';
+        const loaderStyleId = 'mod-loader-style';
+        const ensureLoader = () => {
+            try {
+                if (!document.getElementById(loaderStyleId)) {
+                    const s = document.createElement('style');
+                    s.id = loaderStyleId;
+                    s.textContent = `
+                        #${loaderId} {
+                            position: fixed;
+                            inset: 0;
+                            background: radial-gradient(1200px 600px at 30% 20%, rgba(255, 45, 125, 0.10), transparent 50%),
+                                        radial-gradient(900px 500px at 70% 80%, rgba(0, 255, 170, 0.08), transparent 55%),
+                                        rgba(6, 7, 12, 0.88);
+                            backdrop-filter: blur(10px);
+                            -webkit-backdrop-filter: blur(10px);
+                            z-index: 2147483647;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            opacity: 0;
+                            transition: opacity .25s ease;
+                            pointer-events: none;
+                            font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+                        }
+                        #${loaderId}.show { opacity: 1; }
+                        #${loaderId} .box {
+                            width: min(520px, calc(100vw - 40px));
+                            padding: 18px 18px 16px;
+                            border-radius: 14px;
+                            background: rgba(16, 18, 28, 0.72);
+                            border: 1px solid rgba(255, 45, 125, 0.28);
+                            box-shadow: 0 12px 40px rgba(0,0,0,0.55);
+                        }
+                        #${loaderId} .row {
+                            display: flex;
+                            align-items: center;
+                            gap: 12px;
+                        }
+                        #${loaderId} .spinner {
+                            width: 28px;
+                            height: 28px;
+                            border-radius: 999px;
+                            border: 2px solid rgba(255,255,255,0.18);
+                            border-top-color: rgba(255, 45, 125, 0.95);
+                            border-right-color: rgba(0, 255, 170, 0.65);
+                            animation: modSpin .85s linear infinite;
+                            flex: 0 0 auto;
+                        }
+                        @keyframes modSpin { to { transform: rotate(360deg); } }
+                        #${loaderId} .title {
+                            font-weight: 700;
+                            font-size: 14px;
+                            letter-spacing: .5px;
+                            color: rgba(255,255,255,0.92);
+                        }
+                        #${loaderId} .status {
+                            margin-top: 8px;
+                            font-size: 12px;
+                            color: rgba(255,255,255,0.60);
+                        }
+                        #${loaderId} .bar {
+                            margin-top: 12px;
+                            height: 6px;
+                            border-radius: 999px;
+                            background: rgba(255,255,255,0.08);
+                            overflow: hidden;
+                        }
+                        #${loaderId} .bar > i {
+                            display: block;
+                            height: 100%;
+                            width: 45%;
+                            background: linear-gradient(90deg, rgba(255,45,125,0.95), rgba(0,255,170,0.80));
+                            border-radius: 999px;
+                            animation: modBar 1.1s ease-in-out infinite;
+                            box-shadow: 0 0 18px rgba(255,45,125,0.35);
+                        }
+                        @keyframes modBar {
+                            0% { transform: translateX(-120%); }
+                            100% { transform: translateX(240%); }
+                        }
+                    `;
+                    document.documentElement.appendChild(s);
+                }
+
+                let el = document.getElementById(loaderId);
+                if (!el) {
+                    el = document.createElement('div');
+                    el.id = loaderId;
+                    el.innerHTML = `
+                        <div class="box">
+                            <div class="row">
+                                <div class="spinner"></div>
+                                <div class="title">CSGO Clicker Mod Menu</div>
+                            </div>
+                            <div class="status" id="mod-loader-status">Injecting…</div>
+                            <div class="bar"><i></i></div>
+                        </div>
+                    `;
+                    document.documentElement.appendChild(el);
+                }
+                requestAnimationFrame(() => el.classList.add('show'));
+            } catch (e) {}
+        };
+
+        const setLoaderStatus = (text) => {
+            try {
+                const t = document.getElementById('mod-loader-status');
+                if (t) t.textContent = text;
+            } catch (e) {}
+        };
+
+        const hideLoader = () => {
+            try {
+                const el = document.getElementById(loaderId);
+                if (!el) return;
+                el.classList.remove('show');
+                setTimeout(() => {
+                    try { el.remove(); } catch (e) {}
+                }, 300);
+            } catch (e) {}
+        };
+
+        ensureLoader();
+        setLoaderStatus('Loading game modules…');
+
+        // Helper to load modules from different paths (local vs prod)
+        async function loadGameModule(path) {
+            try {
+                return await import(path);
+            } catch (e) {
+                return null;
+            }
+        }
+
+        // -------------------------------------------------------------------------
+        // 1. IMPORT GAME MODULES
+        // -------------------------------------------------------------------------
+        let user, items, game, showPage, numToValuta, numToString, Pages;
+        let achievementsData, profileModule;
+
+        // Try multiple paths for compatibility
+        const scriptPaths = ['/script.js?v=2.19', './script.js?v=2.19', 'script.js?v=2.19'];
+        const itemsPaths = ['/data/items.js?v=2.19', './data/items.js?v=2.19', '../data/items.js?v=2.19'];
+        const gamePaths = ['/js/game.js?v=2.19', './js/game.js?v=2.19', '../js/game.js?v=2.19'];
+        const achPaths = ['/data/achievements.js?v=2.19', './data/achievements.js?v=2.19', '../data/achievements.js?v=2.19'];
+        const profilePaths = ['/js/online/profile.js?v=2.19', './js/online/profile.js?v=2.19', '../js/online/profile.js?v=2.19'];
+
+        async function importBest(paths) {
+            for (const p of paths) {
+                const mod = await loadGameModule(p);
+                if (mod) return mod;
+            }
+            return null;
+        }
+
+        try {
+            // Wait for window.user to be available or modules to load
+            let attempts = 0;
+            // Use 'win' instead of 'window' to access page context
+            while (!win.user && attempts < 20) {
+                await new Promise(r => setTimeout(r, 200));
+                attempts++;
+            }
+
+            const scriptModule = await importBest(scriptPaths);
+
+            if (scriptModule) {
+                user = scriptModule.user;
+                showPage = scriptModule.showPage;
+                numToValuta = scriptModule.numToValuta;
+                numToString = scriptModule.numToString;
+                Pages = scriptModule.Pages;
+            } else if (win.user) {
+                console.log("Using window.user fallback");
+                user = win.user;
+                // Fallback for helper functions if modules fail
+                numToValuta = win.numToValuta || ((n) => "$" + (n/100).toFixed(2));
+                numToString = win.numToString || ((n) => n.toString());
+                showPage = win.showPage || (() => {});
+            } else {
+                throw new Error("Could not find game data (user object)");
+            }
+
+            const itemsModule = await importBest(itemsPaths);
+            items = itemsModule ? itemsModule.items : (win.items || {});
+
+            const gameModule = await importBest(gamePaths);
+            game = gameModule ? gameModule.game : { emit: () => {} };
+
+            const achModule = await importBest(achPaths);
+            achievementsData = achModule ? achModule.default : {};
+
+            profileModule = await importBest(profilePaths);
+
+            console.log("Modules loaded successfully!");
+            setLoaderStatus('Building UI…');
+        } catch (e) {
+            console.error("CRITICAL ERROR loading Mod Menu:", e);
+            setLoaderStatus('Failed to load. Check console.');
+            return;
+        }
+
+        // -------------------------------------------------------------------------
+        // 2. UI & CSS
+        // -------------------------------------------------------------------------
+        if (document.getElementById('mod-menu')) {
+            document.getElementById('mod-menu').remove();
+        }
+
+        // TRANSLATIONS
+        const translations = {
+            en: {
+                title: "CSGO CLICKER MOD MENU",
+                tabs: {
+                    player: "Player",
+                    inventory: "Inventory",
+                    game: "Game",
+                    server: "Server",
+                    minigames: "Minigames",
+                    misc: "Misc"
+                },
+                features: {
+                    setMoney: { label: "Set Money", desc: "Sets your money to a specific amount." },
+                    staticMoney: { label: "Static Money (Toggle)", desc: "Freezes your money at a high value so it never runs out." },
+                    setLevel: { label: "Set Level", desc: "Sets your level (0-40). High levels unlock more cases." },
+                    setXP: { label: "Set XP", desc: "Sets your current XP amount." },
+                    setTickets: { label: "Set Tickets", desc: "Sets the amount of tickets for the wheel." },
+                    setChips: { label: "Set Chips", desc: "Sets the amount of casino chips/tokens." },
+                    giveAllAchievements: { label: "Give All Achievements", desc: "Unlocks every achievement in the game." },
+                    clearAchievements: { label: "Clear Achievements", desc: "Resets all your achievements." },
+                    offlinePFP: { label: "Offline PFP Changer", desc: "Change your profile picture locally (visible only to you)." },
+                    colorfulName: { label: "Colorful Name (Toggle)", desc: "Makes your name rainbow colored (Visual Only)." },
+                    dupeInventory: { label: "Dupe Inventory", desc: "Duplicates every item currently in your inventory." },
+                    dupeSpecific: { label: "Dupe Specific Item", desc: "Select an item in your inventory to duplicate it." },
+                    clearFakeItems: { label: "Clear Fake Items", desc: "Removes items that don't exist (Unknown Items)." },
+                    clearInventory: { label: "Clear Inventory", desc: "Deletes ALL items from your inventory." },
+                    giveAllItems: { label: "Give All Items (One of Each)", desc: "Adds one of every existing item to your inventory. May cause lag." },
+                    giveAllCases: { label: "Give All Cases", desc: "Adds every type of case to your inventory." },
+                    giveAllKeys: { label: "Give All Keys", desc: "Adds every type of key to your inventory." },
+                    giveAllKnives: { label: "Give All Knives", desc: "Adds all knives to your inventory." },
+                    giveAllGuns: { label: "Give All Guns", desc: "Adds all guns to your inventory." },
+                    giveAllGloves: { label: "Give All Gloves", desc: "Adds all gloves to your inventory." },
+                    giveItem: { label: "Give Specific Item", desc: "Add an item by its exact name." },
+                    customBuy: { label: "Custom Buy Multiple", desc: "Buy a specific amount of an item at once." },
+                    finishMissions: { label: "Finish All Missions", desc: "Instantly completes all active missions." },
+                    getNewMissions: { label: "Get New Missions", desc: "Clears current missions to make space for new ones." },
+                    discardMissions: { label: "Discard All Missions", desc: "Removes all current missions." },
+                    noWaitTimer: { label: "No Wait Timer (Missions)", desc: "Resets the cooldown for new missions." },
+                    freeShop: { label: "Free Shop (Toggle)", desc: "Makes everything in the shop cost $0." },
+                    autoClicker: { label: "OP Auto Clicker (Toggle)", desc: "Automatically clicks for you at very high speed." },
+                    bypassClickLimit: { label: "Bypass Click Limit (Install)", desc: "Removes the anti-autoclicker limit." },
+                    clearOnlineCoinflip: { label: "Clear Online Coinflip", desc: "Clears the local list of online coinflip games." },
+                    anonCoinflip: { label: "Toggle Anonymous ID", desc: "Switches to a random temporary ID for anonymous play." },
+                    coinflipWin: { label: "Coinflip Win (Visual/Local)", desc: "Forces a visual win in coinflip (does not affect server)." },
+                    jackpotEditor: { label: "Jackpot Editor (Stub)", desc: "Opens jackpot debug info in console." },
+                    getSave: { label: "Get Save", desc: "Exports your save string to clipboard." },
+                    loadSave: { label: "Load Save", desc: "Import a save string." },
+                    trueWipe: { label: "True Wipe", desc: "Completely resets your save and local data." },
+                    multiTab: { label: "Multi Tab Fix", desc: "Disables the 'Multiple tabs detected' warning." },
+                    setTitle: { label: "Set Chrome Title", desc: "Changes the browser tab title." },
+                    hidePredator: { label: "Hide Predator", desc: "Hides the Predator menu if present." },
+                    scriptExecutor: { label: "Script Executor", desc: "Run custom JavaScript code." },
+                    versionCheck: { label: "Version Checker", desc: "Checks mod menu version." },
+                    fakeCodes: { label: "Fake Custom Code Creator", desc: "Generates a fake promo code." },
+                    winCrash: { label: "Win Crash (Add Chips)", desc: "Instantly adds chips simulating a Crash win." },
+                    winRoulette: { label: "Win Roulette (Add Chips)", desc: "Instantly adds chips simulating a Roulette win." },
+                    winMines: { label: "Win Mines (Add Chips)", desc: "Instantly adds chips simulating a Mines win." },
+                    winSlots: { label: "Win Slots (Add Chips)", desc: "Instantly adds chips simulating a Slots win." },
+                    rigRNGHigh: { label: "Rig RNG: High (0.99)", desc: "Forces Math.random() to 0.99. Good for Crash." },
+                    rigRNGLow: { label: "Rig RNG: Low (0.001)", desc: "Forces Math.random() to 0.001. Good for some patterns." },
+                    resetRNG: { label: "Reset RNG", desc: "Restores normal random number generation." }
+                }
+            },
+            ru: {
+                title: "ЧИТ-МЕНЮ CSGO CLICKER",
+                tabs: {
+                    player: "Игрок",
+                    inventory: "Инвентарь",
+                    game: "Игра",
+                    server: "Сервер",
+                    minigames: "Мини-игры",
+                    automation: "Автоматизация",
+                    misc: "Разное"
+                },
+                features: {
+                    setMoney: { label: "Установить деньги", desc: "Устанавливает заданное количество денег." },
+                    staticMoney: { label: "Бесконечные деньги", desc: "Замораживает деньги на высоком значении." },
+                    setLevel: { label: "Установить уровень", desc: "Устанавливает уровень (0-40). Открывает кейсы." },
+                    setXP: { label: "Установить опыт", desc: "Устанавливает количество опыта." },
+                    setTickets: { label: "Установить тикеты", desc: "Устанавливает количество билетов для колеса." },
+                    setChips: { label: "Установить фишки", desc: "Устанавливает количество фишек казино." },
+                    setStat: { label: "Редактор Статистики", desc: "Изменяет статистику (клики, открытые кейсы и т.д.)." },
+                    giveAllAchievements: { label: "Выдать все достижения", desc: "Открывает все достижения в игре." },
+                    clearAchievements: { label: "Очистить достижения", desc: "Сбрасывает все достижения." },
+                    offlinePFP: { label: "Сменить аватарку", desc: "Меняет аватарку локально (видите только вы)." },
+                    colorfulName: { label: "Цветной ник", desc: "Делает ник радужным (Визуально)." },
+                    dupeInventory: { label: "Дублировать инвентарь", desc: "Создает копии всех предметов в инвентаре." },
+                    dupeSpecific: { label: "Дюп предмета (Выбор)", desc: "Выберите предмет в инвентаре, чтобы клонировать его." },
+                    clearFakeItems: { label: "Удалить фейк предметы", desc: "Удаляет неизвестные (сломанные) предметы." },
+                    clearInventory: { label: "Очистить инвентарь", desc: "Удаляет ВСЕ предметы из инвентаря." },
+                    giveAllItems: { label: "Выдать все предметы", desc: "Выдает по 1 штуке каждого предмета. (ОПТИМИЗИРОВАНО)" },
+                    giveAllCases: { label: "Выдать все кейсы", desc: "Выдает все виды кейсов." },
+                    giveAllKeys: { label: "Выдать все ключи", desc: "Выдает все виды ключей." },
+                    giveAllKnives: { label: "Выдать все ножи", desc: "Выдает все виды ножей." },
+                    giveAllGuns: { label: "Выдать все пушки", desc: "Выдает все виды огнестрела." },
+                    giveAllGloves: { label: "Выдать все перчатки", desc: "Выдает все виды перчаток." },
+                    giveItem: { label: "Выдать предмет", desc: "Выдает предмет по точному названию." },
+                    customBuy: { label: "Купить много", desc: "Покупка определенного количества предметов за раз." },
+                    finishMissions: { label: "Завершить миссии", desc: "Мгновенно выполняет все активные миссии." },
+                    getNewMissions: { label: "Новые миссии", desc: "Очищает текущие миссии для появления новых." },
+                    discardMissions: { label: "Удалить миссии", desc: "Убирает все текущие миссии." },
+                    noWaitTimer: { label: "Убрать таймер миссий", desc: "Сбрасывает ожидание новых миссий." },
+                    freeShop: { label: "Бесплатный магазин", desc: "Все предметы в магазине стоят $0." },
+                    autoClicker: { label: "Автокликер", desc: "Автоматически кликает с огромной скоростью." },
+                    bypassClickLimit: { label: "Убрать лимит кликов", desc: "Отключает защиту от быстрых кликов." },
+                    clearOnlineCoinflip: { label: "Очистить Коинфлип", desc: "Очищает локальный список игр коинфлипа." },
+                    anonCoinflip: { label: "Анонимный ID", desc: "Включает случайный временный ID." },
+                    coinflipWin: { label: "Победа в Коинфлипе", desc: "Визуальная победа (не влияет на сервер)." },
+                    jackpotEditor: { label: "Редактор Джекпота", desc: "Показывает инфо о джекпоте в консоли." },
+                    getSave: { label: "Получить сохранение", desc: "Копирует код сохранения в буфер." },
+                    loadSave: { label: "Загрузить сохранение", desc: "Импорт сохранения из кода." },
+                    trueWipe: { label: "Полный сброс", desc: "Полностью удаляет сохранение и данные." },
+                    multiTab: { label: "Фикс мульти-вкладки", desc: "Отключает предупреждение о двух вкладках." },
+                    setTitle: { label: "Изменить заголовок", desc: "Меняет название вкладки браузера." },
+                    hidePredator: { label: "Скрыть Predator", desc: "Скрывает меню Predator (если есть)." },
+                    scriptExecutor: { label: "Скрипт-экзекутор", desc: "Выполнение произвольного JS кода." },
+                    versionCheck: { label: "Проверка версии", desc: "Показывает версию мода." },
+                    fakeCodes: { label: "Генератор кодов", desc: "Создает фейковый промокод." },
+                    winCrash: { label: "Победа в Crash (+Фишки)", desc: "Выдает фишки, симулируя победу." },
+                    winRoulette: { label: "Победа в Рулетке (+Фишки)", desc: "Выдает фишки, симулируя победу." },
+                    winMines: { label: "Победа в Минах (+Фишки)", desc: "Выдает фишки, симулируя победу." },
+                    winSlots: { label: "Победа в Слотах (+Фишки)", desc: "Выдает фишки, симулируя победу." },
+                    rigRNGHigh: { label: "Подкрутка RNG: Макс (0.99)", desc: "Шанс всегда 99%. Отлично для Crash." },
+                    rigRNGLow: { label: "Подкрутка RNG: Мин (0.001)", desc: "Шанс всегда 0.1%." },
+                    resetRNG: { label: "Сбросить RNG", desc: "Возвращает нормальный рандом." },
+                    caseBot: { label: "Бот Открытия Кейсов", desc: "Автоматически открывает кейсы до выпадения редкого предмета." }
+                }
+            }
+        };
+
+        // Detect Language
+        const userLang = navigator.language || navigator.userLanguage;
+        const lang = userLang.startsWith('ru') ? 'ru' : 'en';
+        const t = translations[lang];
+
+        const style = document.createElement('style');
+        style.innerHTML = `
+            :root {
+                --mm-bg: rgba(14, 15, 24, 0.86);
+                --mm-bg-soft: rgba(14, 15, 24, 0.55);
+                --mm-panel: rgba(10, 11, 18, 0.70);
+                --mm-text: rgba(233, 233, 255, 0.92);
+                --mm-text-dim: rgba(233, 233, 255, 0.70);
+                --mm-border: rgba(255, 255, 255, 0.10);
+                --mm-border-soft: rgba(255, 255, 255, 0.06);
+                --mm-accent: rgba(255, 45, 125, 0.90);
+                --mm-accent-soft: rgba(255, 45, 125, 0.35);
+                --mm-accent-2: rgba(0, 255, 170, 0.65);
+                --mm-shadow: 0 18px 60px rgba(0,0,0,0.70);
+            }
+            #mod-menu * { box-sizing: border-box; }
+            #mod-menu {
+                position: fixed;
+                top: 50px;
+                left: 50px;
+                width: 850px;
+                height: 600px;
+                background: radial-gradient(1200px 600px at 30% 20%, rgba(255, 45, 125, 0.10), transparent 50%),
+                            radial-gradient(900px 500px at 70% 80%, rgba(0, 255, 170, 0.08), transparent 55%),
+                            var(--mm-bg);
+                border: 1px solid rgba(255, 45, 125, 0.40);
+                color: var(--mm-text);
+                font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+                z-index: 999999;
+                display: flex;
+                box-shadow: var(--mm-shadow);
+                border-radius: 14px;
+                overflow: hidden;
+                flex-direction: column;
+                backdrop-filter: blur(12px);
+                -webkit-backdrop-filter: blur(12px);
+                opacity: 0;
+                transform: translateY(10px) scale(0.985);
+                visibility: hidden;
+                pointer-events: none;
+                transition: opacity .22s ease, transform .22s ease, visibility 0s linear .22s;
+                will-change: transform, opacity;
+            }
+            #mod-menu::before {
+                content: '';
+                position: absolute;
+                inset: 0;
+                border-radius: 14px;
+                padding: 1px;
+                background: linear-gradient(135deg, rgba(255, 45, 125, 0.45), rgba(0, 255, 170, 0.18), rgba(255, 255, 255, 0.10));
+                -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+                -webkit-mask-composite: xor;
+                mask-composite: exclude;
+                pointer-events: none;
+                opacity: 0.85;
+            }
+            #mod-menu.is-open {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+                visibility: visible;
+                pointer-events: auto;
+                transition: opacity .22s ease, transform .22s ease;
+            }
+            #mod-header {
+                background: linear-gradient(90deg, rgba(255, 45, 125, 0.16), rgba(0, 255, 170, 0.06));
+                padding: 12px 14px;
+                cursor: move;
+                border-bottom: 1px solid rgba(255,255,255,0.08);
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                font-weight: 700;
+                font-size: 14px;
+                letter-spacing: .5px;
+                user-select: none;
+            }
+            #mod-body {
+                display: flex;
+                flex: 1;
+                height: 100%;
+                overflow: hidden;
+            }
+            #mod-sidebar {
+                width: 180px;
+                background: var(--mm-panel);
+                border-right: 1px solid var(--mm-border-soft);
+                display: flex;
+                flex-direction: column;
+            }
+            .mod-tab-btn {
+                padding: 15px 15px;
+                background: none;
+                border: none;
+                color: var(--mm-text-dim);
+                text-align: left;
+                cursor: pointer;
+                border-bottom: 1px solid var(--mm-border-soft);
+                transition: background .2s ease, color .2s ease, padding-left .2s ease;
+                font-family: inherit;
+                outline: none;
+            }
+            .mod-tab-btn:focus-visible {
+                box-shadow: 0 0 0 2px rgba(255, 45, 125, 0.55) inset, 0 0 0 2px rgba(255, 45, 125, 0.25);
+            }
+            .mod-tab-btn:hover {
+                background: rgba(255, 45, 125, 0.08);
+                color: rgba(255,255,255,0.92);
+                padding-left: 20px;
+            }
+            .mod-tab-btn.active {
+                background: rgba(255, 45, 125, 0.12);
+                color: rgba(255,255,255,0.95);
+                border-left: 4px solid rgba(255, 45, 125, 0.90);
+            }
+            #mod-content {
+                flex: 1;
+                padding: 18px;
+                overflow-y: auto;
+                background: var(--mm-bg-soft);
+            }
+            #mod-content::-webkit-scrollbar {
+                width: 10px;
+            }
+            #mod-content::-webkit-scrollbar-track {
+                background: rgba(255,255,255,0.04);
+                border-left: 1px solid rgba(255,255,255,0.06);
+            }
+            #mod-content::-webkit-scrollbar-thumb {
+                background: linear-gradient(180deg, rgba(255, 45, 125, 0.35), rgba(0, 255, 170, 0.20));
+                border-radius: 999px;
+                border: 2px solid rgba(0,0,0,0);
+                background-clip: padding-box;
+            }
+            .mod-page {
+                display: none;
+                grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+                gap: 12px;
+            }
+            .mod-page.active {
+                display: grid;
+            }
+            .mod-btn-container {
+                position: relative;
+            }
+            .mod-btn-container:hover .mod-btn {
+                border-color: rgba(255, 45, 125, 0.28);
+            }
+            .mod-btn {
+                background: rgba(255,255,255,0.06);
+                border: 1px solid rgba(255,255,255,0.10);
+                color: rgba(233, 233, 255, 0.90);
+                padding: 11px 10px;
+                cursor: pointer;
+                border-radius: 10px;
+                font-family: inherit;
+                transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease, color .18s ease;
+                text-align: center;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                min-height: 50px;
+                font-size: 13px;
+                user-select: none;
+                width: 100%;
+                outline: none;
+            }
+            .mod-btn:focus-visible {
+                border-color: rgba(255, 45, 125, 0.75);
+                box-shadow: 0 14px 30px rgba(0,0,0,0.55), 0 0 0 2px rgba(255, 45, 125, 0.25);
+            }
+            .mod-btn:hover {
+                background: linear-gradient(90deg, rgba(255, 45, 125, 0.22), rgba(0, 255, 170, 0.12));
+                color: rgba(255,255,255,0.96);
+                box-shadow: 0 14px 30px rgba(0,0,0,0.55), 0 0 0 1px rgba(255, 45, 125, 0.25) inset;
+                border-color: rgba(255, 45, 125, 0.55);
+                transform: translateY(-2px);
+            }
+            .mod-btn:active {
+                transform: scale(0.98);
+            }
+            .mod-btn.toggle-on {
+                background: rgba(255, 45, 125, 0.16);
+                color: rgba(255,255,255,0.96);
+                border-color: rgba(255, 45, 125, 0.80);
+                box-shadow: 0 0 0 1px rgba(255, 45, 125, 0.20) inset;
+            }
+            .info-icon {
+                position: absolute;
+                top: 2px;
+                right: 5px;
+                color: rgba(255,255,255,0.90);
+                font-size: 10px;
+                cursor: help;
+                border: 1px solid rgba(255,255,255,0.55);
+                border-radius: 50%;
+                width: 14px;
+                height: 14px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: rgba(0,0,0,0.45);
+                z-index: 5;
+                transform: translateZ(0);
+            }
+            .mod-btn:hover .info-icon {
+                color: rgba(255,255,255,0.95);
+                border-color: rgba(255, 45, 125, 0.65);
+            }
+            .info-icon::after {
+                content: attr(data-tooltip);
+                position: absolute;
+                top: 100%;
+                right: 0;
+                background: rgba(10, 11, 18, 0.94);
+                color: rgba(255,255,255,0.92);
+                padding: 10px 10px;
+                border: 1px solid rgba(255, 45, 125, 0.45);
+                border-radius: 12px;
+                font-size: 11px;
+                white-space: normal;
+                width: 200px;
+                z-index: 100;
+                pointer-events: none;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.60);
+                text-align: left;
+                margin-top: 10px;
+                opacity: 0;
+                transform: translateY(6px) scale(0.985);
+                filter: blur(0px);
+                transform-origin: top right;
+                transition: opacity .16s ease, transform .18s cubic-bezier(.2,.9,.2,1);
+            }
+            .info-icon::before {
+                content: '';
+                position: absolute;
+                top: 100%;
+                right: 7px;
+                width: 10px;
+                height: 10px;
+                margin-top: 6px;
+                background: rgba(10, 11, 18, 0.94);
+                border-left: 1px solid rgba(255, 45, 125, 0.45);
+                border-top: 1px solid rgba(255, 45, 125, 0.45);
+                transform: rotate(45deg) translateY(4px);
+                opacity: 0;
+                transition: opacity .16s ease, transform .18s cubic-bezier(.2,.9,.2,1);
+                pointer-events: none;
+                z-index: 101;
+            }
+            .info-icon:hover::after,
+            .info-icon:hover::before {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+
+            #overlay-menu {
+                position: fixed;
+                top: 60px;
+                left: 80%;
+                background: rgba(14, 15, 24, 0.70);
+                border: 1px solid rgba(255, 45, 125, 0.35);
+                color: rgba(233, 233, 255, 0.92);
+                padding: 0;
+                z-index: 999998;
+                display: block;
+                font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+                border-radius: 12px;
+                min-width: 200px;
+                box-shadow: 0 16px 50px rgba(0,0,0,0.65);
+                backdrop-filter: blur(10px);
+                -webkit-backdrop-filter: blur(10px);
+                opacity: 0;
+                transform: translateY(8px) scale(0.985);
+                visibility: hidden;
+                pointer-events: none;
+                transition: opacity .20s ease, transform .20s ease, visibility 0s linear .20s;
+                will-change: transform, opacity;
+            }
+            #overlay-menu.is-open {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+                visibility: visible;
+                pointer-events: auto;
+                transition: opacity .20s ease, transform .20s ease;
+            }
+            #overlay-header {
+                background: rgba(255, 45, 125, 0.12);
+                padding: 8px 10px;
+                cursor: move;
+                border-bottom: 1px solid rgba(255,255,255,0.08);
+                font-weight: bold;
+                font-size: 12px;
+                display: flex;
+                justify-content: space-between;
+                user-select: none;
+            }
+            #overlay-content {
+                padding: 10px;
+                font-size: 12px;
+                pointer-events: auto;
+            }
+            .close-btn {
+                cursor: pointer;
+                color: rgba(255, 120, 170, 0.95);
+                transition: color .18s ease, transform .18s ease, opacity .18s ease;
+                opacity: 0.9;
+            }
+            .close-btn:hover {
+                color: rgba(255,255,255,0.95);
+                transform: translateY(-1px);
+                opacity: 1;
+            }
+            #mod-author {
+                margin-top: auto;
+                padding: 15px;
+                border-top: 1px solid rgba(255,255,255,0.06);
+                text-align: center;
+                background: rgba(10, 11, 18, 0.55);
+            }
+            #hotkeys-info {
+                font-size: 10px;
+                color: rgba(233, 233, 255, 0.60);
+                margin-bottom: 10px;
+                border-bottom: 1px dashed rgba(255,255,255,0.12);
+                padding-bottom: 5px;
+            }
+            .author-link {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 8px;
+                color: rgba(233, 233, 255, 0.80);
+                text-decoration: none;
+                font-size: 11px;
+                margin-bottom: 5px;
+                opacity: 0.7;
+                transition: opacity 0.2s;
+            }
+            .author-link:hover {
+                opacity: 1;
+                text-decoration: none;
+            }
+            .author-btn {
+                background: linear-gradient(90deg, rgba(255,45,125,0.55), rgba(0,255,170,0.30));
+                color: white;
+                padding: 5px 12px;
+                border-radius: 10px;
+                font-weight: bold;
+                cursor: pointer;
+                text-decoration: none;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 8px;
+                margin-top: 5px;
+                text-shadow: 0 1px 2px black;
+                transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+            }
+            .author-icon {
+                width: 21px;
+                height: 21px;
+                display: inline-block;
+                flex: 0 0 auto;
+                opacity: 0.95;
+            }
+            .author-btn:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 16px 40px rgba(0,0,0,0.55);
+                border-color: rgba(0, 255, 170, 0.35);
+                color: white;
+            }
+            @media (prefers-reduced-motion: reduce) {
+                #mod-menu, #overlay-menu, #mod-menu * , #overlay-menu * {
+                    transition: none !important;
+                    animation: none !important;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+        hideLoader();
+
+        // Helper to create buttons
+        function createBtn(id, key, onClickStr) {
+            const feat = t.features[key] || { label: key, desc: "No description" };
+            return `
+                <div class="mod-btn-container">
+                    <button class="mod-btn" id="${id}" onclick="${onClickStr}">${feat.label}</button>
+                    <div class="info-icon" data-tooltip="${feat.desc}">!</div>
+                </div>
+            `;
+        }
+
+        const menuHTML = `
+            <div id="mod-header">
+                <span>${t.title}</span>
+                <div>
+                    <span style="font-size: 12px; margin-right: 10px;">v1.5</span>
+                    <span class="close-btn" onclick="toggleMenu()">[X]</span>
+                </div>
+            </div>
+            <div id="mod-body">
+                <div id="mod-sidebar">
+                    <button class="mod-tab-btn active" onclick="switchTab('tab-player')">${t.tabs.player}</button>
+                    <button class="mod-tab-btn" onclick="switchTab('tab-inventory')">${t.tabs.inventory}</button>
+                    <button class="mod-tab-btn" onclick="switchTab('tab-game')">${t.tabs.game}</button>
+                    <button class="mod-tab-btn" onclick="switchTab('tab-server')">${t.tabs.server}</button>
+                    <button class="mod-tab-btn" onclick="switchTab('tab-minigames')">${t.tabs.minigames}</button>
+                    <button class="mod-tab-btn" onclick="switchTab('tab-automation')">${t.tabs.automation}</button>
+                    <button class="mod-tab-btn" onclick="switchTab('tab-misc')">${t.tabs.misc}</button>
+
+                    <div id="mod-author">
+                        <div id="hotkeys-info">
+                            <b>Hotkeys:</b><br>
+                            [N] Toggle Menu<br>
+                            [J] Toggle Overlay
+                        </div>
+                        <a href="https://github.com/sensejke" target="_blank" class="author-link">
+                            <svg class="author-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                <path fill="currentColor" d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.69c-2.78.6-3.37-1.19-3.37-1.19c-.46-1.16-1.11-1.47-1.11-1.47c-.9-.62.07-.61.07-.61c1 .07 1.53 1.03 1.53 1.03c.9 1.52 2.36 1.08 2.94.83c.09-.64.35-1.08.63-1.33c-2.22-.25-4.56-1.11-4.56-4.95c0-1.09.39-1.98 1.03-2.68c-.1-.25-.45-1.27.1-2.64c0 0 .84-.27 2.75 1.02c.8-.22 1.65-.33 2.5-.33c.85 0 1.7.11 2.5.33c1.9-1.29 2.74-1.02 2.74-1.02c.56 1.37.21 2.39.11 2.64c.64.7 1.03 1.59 1.03 2.68c0 3.85-2.34 4.69-4.57 4.94c.36.31.68.92.68 1.85v2.75c0 .27.18.58.69.48A10 10 0 0 0 12 2Z"/>
+                            </svg>
+                            <span>github.com/sensejke</span>
+                        </a>
+                        <a href="https://t.me/sensejke" target="_blank" class="author-btn">
+                            <svg class="author-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                <path fill="currentColor" d="M9.9 15.6L9.7 19c.4 0 .6-.2.9-.4l2.1-2l4.4 3.2c.8.4 1.3.2 1.5-.7l2.7-12.5c.3-1.1-.4-1.6-1.2-1.3L2.9 10.2c-1.1.4-1.1 1.1-.2 1.4l4.5 1.4L17.6 6.7c.5-.3 1-.1.6.2L9.9 15.6Z"/>
+                            </svg>
+                            <span>@sensejke</span>
+                        </a>
+                    </div>
+                </div>
+                <div id="mod-content">
+                    <!-- PLAYER TAB -->
+                    <div id="tab-player" class="mod-page active">
+                        ${createBtn('btn-setMoney', 'setMoney', 'mod_setMoney()')}
+                        ${createBtn('btn-staticMoney', 'staticMoney', 'mod_staticMoney()')}
+                        ${createBtn('btn-setLevel', 'setLevel', 'mod_setLevel()')}
+                        ${createBtn('btn-setXP', 'setXP', 'mod_setXP()')}
+                        ${createBtn('btn-setTickets', 'setTickets', 'mod_setTickets()')}
+                        ${createBtn('btn-setChips', 'setChips', 'mod_setChips()')}
+                        ${createBtn('btn-setStat', 'setStat', 'mod_setStat()')}
+                        ${createBtn('btn-giveAllAchievements', 'giveAllAchievements', 'mod_giveAllAchievements()')}
+                        ${createBtn('btn-clearAchievements', 'clearAchievements', 'mod_clearAchievements()')}
+                        ${createBtn('btn-offlinePFP', 'offlinePFP', 'mod_offlinePFP()')}
+                        ${createBtn('btn-colorfulName', 'colorfulName', 'mod_colorfulName()')}
+                    </div>
+
+                    <!-- INVENTORY TAB -->
+                    <div id="tab-inventory" class="mod-page">
+                        ${createBtn('btn-dupeInventory', 'dupeInventory', 'mod_dupeInventory()')}
+                        ${createBtn('btn-dupeSpecific', 'dupeSpecific', 'mod_dupeSpecific()')}
+                        ${createBtn('btn-clearFakeItems', 'clearFakeItems', 'mod_clearFakeItems()')}
+                        ${createBtn('btn-clearInventory', 'clearInventory', 'mod_clearInventory()')}
+                        ${createBtn('btn-giveAllItems', 'giveAllItems', 'mod_giveAllItems()')}
+                        ${createBtn('btn-giveAllCases', 'giveAllCases', 'mod_giveAllCases()')}
+                        ${createBtn('btn-giveAllKeys', 'giveAllKeys', 'mod_giveAllKeys()')}
+                        ${createBtn('btn-giveAllKnives', 'giveAllKnives', 'mod_giveAllKnives()')}
+                        ${createBtn('btn-giveAllGuns', 'giveAllGuns', 'mod_giveAllGuns()')}
+                        ${createBtn('btn-giveAllGloves', 'giveAllGloves', 'mod_giveAllGloves()')}
+                        ${createBtn('btn-giveItem', 'giveItem', 'mod_giveItem()')}
+                        ${createBtn('btn-customBuy', 'customBuy', 'mod_customBuy()')}
+                    </div>
+
+                    <!-- GAME TAB -->
+                    <div id="tab-game" class="mod-page">
+                        ${createBtn('btn-finishMissions', 'finishMissions', 'mod_finishMissions()')}
+                        ${createBtn('btn-getNewMissions', 'getNewMissions', 'mod_getNewMissions()')}
+                        ${createBtn('btn-discardMissions', 'discardMissions', 'mod_discardMissions()')}
+                        ${createBtn('btn-noWaitTimer', 'noWaitTimer', 'mod_noWaitTimer()')}
+                        ${createBtn('btn-freeShop', 'freeShop', 'mod_freeShop()')}
+                        ${createBtn('btn-autoClicker', 'autoClicker', 'mod_autoClicker()')}
+                        ${createBtn('btn-bypassClickLimit', 'bypassClickLimit', 'mod_bypassClickLimit()')}
+                    </div>
+
+                    <!-- SERVER TAB -->
+                    <div id="tab-server" class="mod-page">
+                        ${createBtn('btn-clearOnlineCoinflip', 'clearOnlineCoinflip', 'mod_clearOnlineCoinflip()')}
+                        ${createBtn('btn-anonCoinflip', 'anonCoinflip', 'mod_anonCoinflip()')}
+                        ${createBtn('btn-coinflipWin', 'coinflipWin', 'mod_coinflipWin()')}
+                        ${createBtn('btn-jackpotEditor', 'jackpotEditor', 'mod_jackpotEditor()')}
+                    </div>
+
+                    <!-- MINIGAMES TAB -->
+                    <div id="tab-minigames" class="mod-page">
+                        ${createBtn('btn-winCrash', 'winCrash', 'mod_winCrash()')}
+                        ${createBtn('btn-winRoulette', 'winRoulette', 'mod_winRoulette()')}
+                        ${createBtn('btn-winMines', 'winMines', 'mod_winMines()')}
+                        ${createBtn('btn-winSlots', 'winSlots', 'mod_winSlots()')}
+
+                        <div style="grid-column: 1 / -1; height:1px; background:#004400; margin:5px 0;"></div>
+
+                        ${createBtn('btn-rigRNGHigh', 'rigRNGHigh', 'mod_rigRNGHigh()')}
+                        ${createBtn('btn-rigRNGLow', 'rigRNGLow', 'mod_rigRNGLow()')}
+                        ${createBtn('btn-resetRNG', 'resetRNG', 'mod_resetRNG()')}
+                    </div>
+
+                    <!-- AUTOMATION TAB -->
+                    <div id="tab-automation" class="mod-page">
+                        ${createBtn('btn-caseBot', 'caseBot', 'mod_caseBot()')}
+                    </div>
+
+                    <!-- MISC TAB -->
+                    <div id="tab-misc" class="mod-page">
+                        ${createBtn('btn-getSave', 'getSave', 'mod_getSave()')}
+                        ${createBtn('btn-loadSave', 'loadSave', 'mod_loadSave()')}
+                        ${createBtn('btn-trueWipe', 'trueWipe', 'mod_trueWipe()')}
+                        ${createBtn('btn-multiTab', 'multiTab', 'mod_multiTab()')}
+                        ${createBtn('btn-setTitle', 'setTitle', 'mod_setTitle()')}
+                        ${createBtn('btn-hidePredator', 'hidePredator', 'mod_hidePredator()')}
+                        ${createBtn('btn-scriptExecutor', 'scriptExecutor', 'mod_scriptExecutor()')}
+                        ${createBtn('btn-versionCheck', 'versionCheck', 'mod_versionCheck()')}
+                        ${createBtn('btn-fakeCodes', 'fakeCodes', 'mod_fakeCodes()')}
+                    </div>
+                </div>
+            </div>
+        `;
+
+        const menuDiv = document.createElement('div');
+        menuDiv.id = 'mod-menu';
+        menuDiv.innerHTML = menuHTML;
+        document.body.appendChild(menuDiv);
+
+        const overlayDiv = document.createElement('div');
+        overlayDiv.id = 'overlay-menu';
+        overlayDiv.innerHTML = `
+            <div id="overlay-header">
+                <span>Stats</span>
+                <span style="cursor:pointer;" onclick="toggleOverlay()">[x]</span>
+            </div>
+            <div id="overlay-content">
+                Waiting for data...
+            </div>
+        `;
+        document.body.appendChild(overlayDiv);
+
+        // -------------------------------------------------------------------------
+        // 3. LOGIC IMPLEMENTATION
+        // -------------------------------------------------------------------------
+
+        win.modState = {
+            staticMoney: false,
+            freeShop: false,
+            autoClicker: false,
+            rainbowName: false,
+            originalID: localStorage.localuser
+        };
+
+        // Helper functions
+        win.switchTab = function(tabId) {
+            document.querySelectorAll('.mod-page').forEach(p => p.classList.remove('active'));
+            const page = document.getElementById(tabId);
+            if (page) page.classList.add('active');
+
+            document.querySelectorAll('.mod-tab-btn').forEach(b => b.classList.remove('active'));
+            const btn = document.querySelector(`.mod-tab-btn[onclick="switchTab('${tabId}')"]`);
+            if (btn) btn.classList.add('active');
+        };
+
+        win.toggleMenu = function() {
+            const m = document.getElementById('mod-menu');
+            if (!m) return;
+            m.classList.toggle('is-open');
+        };
+
+        win.toggleOverlay = function() {
+            const m = document.getElementById('overlay-menu');
+            if (!m) return;
+            m.classList.toggle('is-open');
+            if (m.classList.contains('is-open')) updateOverlay();
+        };
+
+        function updateOverlay() {
+            const content = document.getElementById('overlay-content');
+            const overlay = document.getElementById('overlay-menu');
+            if (overlay && overlay.classList.contains('is-open') && content) {
+                content.innerHTML = `
+                    <div style="font-weight:700; color:rgba(255,255,255,0.92); margin-bottom:6px;">Press J to hide</div>
+                    Money: ${numToValuta(user.money)}<br>
+                    XP: ${user.xp} (Lvl ${Math.floor(Math.sqrt(user.xp/1000))})<br>
+                    Inventory: ${user.inventory.length} items<br>
+                    Tickets: ${user.tickets}<br>
+                    Tokens: ${user.tokens}
+                `;
+                requestAnimationFrame(updateOverlay);
+            }
+        }
+
+        // --- PLAYER ---
+        win.mod_setMoney = () => { user.money = parseFloat(prompt("Enter Money amount (cents):", user.money)); game.emit("update"); };
+        win.mod_staticMoney = () => {
+            win.modState.staticMoney = !win.modState.staticMoney;
+            document.getElementById('btn-staticMoney').classList.toggle('toggle-on', win.modState.staticMoney);
+            if (win.modState.staticMoney) {
+                win.modState.staticMoneyInterval = setInterval(() => user.money = 1e12, 100);
+            } else {
+                clearInterval(win.modState.staticMoneyInterval);
+            }
+        };
+        win.mod_setLevel = () => {
+            let lvl = parseInt(prompt("Level (0-40):", 1));
+            if (lvl >= 40) user.xp = 1e9;
+            else user.xp = Math.pow(lvl, 2) * 1000;
+            game.emit("update");
+        };
+        win.mod_setXP = () => { user.xp = parseInt(prompt("XP:", user.xp)); game.emit("update"); };
+        win.mod_setTickets = () => { user.tickets = parseInt(prompt("Tickets:", user.tickets)); game.emit("update"); };
+        win.mod_setChips = () => { user.tokens = parseInt(prompt("Chips/Tokens:", user.tokens)); game.emit("update"); };
+        win.mod_setStat = () => {
+            const statName = prompt("Enter stat name (e.g. 'clicks', 'opened_cases', 'time_played'):");
+            if (!statName) return;
+            const current = user.stats[statName] || 0;
+            const val = parseFloat(prompt(`Value for '${statName}' (Current: ${current}):`, current));
+            if (!isNaN(val)) {
+                user.stats[statName] = val;
+                alert(`Stat '${statName}' set to ${val}`);
+                game.emit("update");
+            }
+        };
+
+        win.mod_giveAllAchievements = () => {
+            if (!achievementsData) return alert("Achievements data not loaded");
+            Object.keys(achievementsData).forEach(k => {
+                user.achievements[k] = true;
+                user.achievements_collected[k] = true;
+            });
+            alert("All Achievements Given!");
+            game.emit("update");
+        };
+        win.mod_clearAchievements = () => {
+            user.achievements = {};
+            user.achievements_collected = {};
+            alert("Achievements Cleared");
+            game.emit("update");
+        };
+        win.mod_offlinePFP = () => {
+            if (profileModule && profileModule.updateProfilePicture) profileModule.updateProfilePicture();
+            else alert("Profile module not loaded correctly.");
+        };
+        win.mod_colorfulName = () => {
+            win.modState.rainbowName = !win.modState.rainbowName;
+            document.getElementById('btn-colorfulName').classList.toggle('toggle-on', win.modState.rainbowName);
+
+            if (win.modState.rainbowName) {
+                win.modState.rainbowInterval = setInterval(() => {
+                    const el = document.querySelector('.nav-profile-name');
+                    if (el) {
+                        el.style.backgroundImage = 'linear-gradient(to right, red, orange, yellow, green, blue, indigo, violet)';
+                        el.style.webkitBackgroundClip = 'text';
+                        el.style.color = 'transparent';
+                        el.style.fontWeight = 'bold';
+                    }
+                }, 100);
+            } else {
+                clearInterval(win.modState.rainbowInterval);
+                const el = document.querySelector('.nav-profile-name');
+                if (el) {
+                    el.style = '';
+                    el.style.color = null;
+                }
+            }
+        };
+
+        // --- INVENTORY ---
+        win.mod_dupeInventory = () => {
+            user.inventory = user.inventory.concat([...user.inventory]);
+            alert("Inventory Duplicated");
+            game.emit("update");
+        };
+        win.mod_clearFakeItems = () => {
+            if (!items) return alert("Items database not loaded!");
+            const before = user.inventory.length;
+            // Filter out items that are not in the items database
+            user.inventory = user.inventory.filter(name => items[name] !== undefined);
+            const after = user.inventory.length;
+            const removed = before - after;
+            alert(`Removed ${removed} fake/unknown items.`);
+            game.emit("update");
+        };
+        win.mod_clearInventory = () => {
+            if(confirm("Delete all items?")) {
+                user.inventory = [];
+                game.emit("update");
+            }
+        };
+        win.mod_giveAllItems = () => {
+            if(confirm("This will add one of EVERY item. Optimized version. Continue?")) {
+                const allKeys = Object.keys(items);
+                // Batch push
+                user.inventory.push(...allKeys);
+                alert(`Added ${allKeys.length} items.`);
+                game.emit("update");
+            }
+        };
+        const giveByType = (filter) => {
+            let count = 0;
+            Object.keys(items).forEach(k => {
+                if (items[k].type === filter || (items[k].name && items[k].name.includes(filter))) {
+                    user.inventory.push(k);
+                    count++;
+                }
+            });
+            alert(`Added ${count} items.`);
+            game.emit("update");
+        };
+        win.mod_giveAllCases = () => giveByType("case");
+        win.mod_giveAllKeys = () => giveByType("Key");
+        win.mod_giveAllKnives = () => {
+            Object.keys(items).forEach(k => {
+                if (k.includes("Knife") || k.includes("Bayonet") || k.includes("Karambit") || k.includes("Daggers")) {
+                    user.inventory.push(k);
+                }
+            });
+            game.emit("update");
+        };
+        win.mod_giveAllGuns = () => {
+            Object.keys(items).forEach(k => {
+                if (k.includes("AK-47") || k.includes("M4A1") || k.includes("AWP")) {
+                    user.inventory.push(k);
+                }
+            });
+            game.emit("update");
+        };
+        win.mod_giveAllGloves = () => giveByType("Gloves");
+        win.mod_giveItem = () => {
+            const name = prompt("Item Name (exact):");
+            if (items[name]) {
+                user.inventory.push(name);
+                game.emit("update");
+            } else {
+                alert("Item not found");
+            }
+        };
+        win.mod_customBuy = () => {
+            const name = prompt("Item Name to Buy:");
+            if (!items[name]) return alert("Item not found");
+            const amount = parseInt(prompt("Amount:", 10));
+            if (isNaN(amount) || amount <= 0) return;
+
+            const cost = items[name].price * amount;
+            if (user.money >= cost) {
+                user.money -= cost;
+                for(let i=0; i<amount; i++) user.inventory.push(name);
+                alert(`Bought ${amount} ${name} for ${numToValuta(cost)}`);
+            } else {
+                alert(`Not enough money! Need ${numToValuta(cost)}`);
+            }
+            game.emit("update");
+        };
+
+        // --- GAME ---
+        win.mod_finishMissions = () => {
+            if (user.missions) {
+                user.missions.forEach(m => m.progress = m.amount);
+                alert("Missions finished! Go claim them.");
+                game.emit("update");
+            }
+        };
+        win.mod_getNewMissions = () => {
+            user.missions = [];
+            alert("Missions cleared. Refresh page or wait for spawn.");
+            game.emit("update");
+        };
+        win.mod_discardMissions = () => {
+            user.missions = [];
+            game.emit("update");
+        };
+        win.mod_noWaitTimer = () => {
+            user.missionResetTime = 0;
+            alert("Mission timer reset.");
+        };
+        win.mod_freeShop = () => {
+            win.modState.freeShop = !win.modState.freeShop;
+            document.getElementById('btn-freeShop').classList.toggle('toggle-on', win.modState.freeShop);
+            if (win.modState.freeShop) {
+                Object.values(items).forEach(i => {
+                    if (!i.origPrice) i.origPrice = i.price;
+                    i.price = 0;
+                });
+            } else {
+                Object.values(items).forEach(i => {
+                    if (i.origPrice) i.price = i.origPrice;
+                });
+            }
+            game.emit("update");
+        };
+        win.mod_autoClicker = () => {
+            win.modState.autoClicker = !win.modState.autoClicker;
+            document.getElementById('btn-autoClicker').classList.toggle('toggle-on', win.modState.autoClicker);
+            if (win.modState.autoClicker) {
+                win.modState.acInterval = setInterval(() => {
+                    user.money += (user.upgrades.perClick || 1) * 10;
+                    // Also simulate XP/Stats if needed
+                    user.stats.clicks = (user.stats.clicks || 0) + 1;
+                    game.emit("update");
+                }, 50);
+            } else {
+                clearInterval(win.modState.acInterval);
+            }
+        };
+        win.mod_bypassClickLimit = () => {
+            // Try to replace the click button to remove event listeners
+            const btn = document.querySelector('.clickbtn');
+            if (btn) {
+                const clone = btn.cloneNode(true);
+                btn.parentNode.replaceChild(clone, btn);
+                clone.onclick = () => {
+                     user.money += (user.upgrades.perClick || 1);
+                     user.stats.clicks = (user.stats.clicks || 0) + 1;
+                     game.emit("update");
+
+                     // Visual feedback
+                     clone.style.transform = "scale(0.95)";
+                     setTimeout(() => clone.style.transform = "scale(1)", 50);
+                };
+                alert("Click Button Replaced! No more limits.");
+            } else {
+                alert("Click button not found (Go to Click page first)");
+            }
+        };
+
+        // --- SERVER ---
+        win.mod_clearOnlineCoinflip = () => {
+            if (user.online && user.online.coinflipGames) {
+                user.online.coinflipGames = {};
+                game.emit("update");
+                alert("Cleared local cache of games.");
+            }
+        };
+        win.mod_anonCoinflip = () => {
+            if (localStorage.localuser.startsWith("anon")) {
+                localStorage.localuser = win.modState.originalID;
+                alert("Restored Identity. Reloading...");
+            } else {
+                win.modState.originalID = localStorage.localuser;
+                localStorage.localuser = "anon_" + Math.floor(Math.random() * 1000000);
+                alert("Switched to Anonymous ID. Reloading...");
+            }
+            window.location.reload();
+        };
+        win.mod_coinflipWin = () => {
+            alert("Coinflip Win Cheat: This is purely visual or client-side. Real server results cannot be changed.");
+        };
+        win.mod_jackpotEditor = () => {
+            alert("Jackpot Editor: Not implemented (Server-side logic).");
+        };
+
+        // --- AUTOMATION ---
+        win.mod_caseBot = () => {
+            // Find all cases
+            const cases = Object.values(items).filter(i => i.type === 'case');
+            if (cases.length === 0) return alert("No cases found in DB.");
+
+            // Simple UI
+            const caseNames = cases.map(c => c.name).join('\n');
+            const targetCase = prompt("Enter EXACT Case Name to farm:\n" + caseNames);
+            if (!targetCase || !items[targetCase]) return alert("Invalid case.");
+
+            const targetItem = prompt("Stop when getting item containing name (e.g. 'Knife' or 'Dragon Lore'):");
+            if (!targetItem) return;
+
+            const speed = parseInt(prompt("Speed (ms delay between opens, min 10):", "50")) || 50;
+
+            if (!confirm(`Start farming '${targetCase}' until '${targetItem}'? Press OK.`)) return;
+
+            const noti = document.createElement('div');
+            noti.style.position = 'fixed';
+            noti.style.bottom = '10px';
+            noti.style.right = '10px';
+            noti.style.background = 'red';
+            noti.style.color = 'white';
+            noti.style.padding = '10px';
+            noti.style.zIndex = '1000000';
+            noti.innerText = "CASE BOT RUNNING... Click to STOP";
+            document.body.appendChild(noti);
+
+            let running = true;
+            noti.onclick = () => { running = false; noti.remove(); alert("Bot Stopped"); };
+
+            const interval = setInterval(async () => {
+                if (!running) { clearInterval(interval); noti.remove(); return; }
+
+                // Check if we have the case
+                if (!user.inventory.includes(targetCase)) {
+                    user.inventory.push(targetCase);
+                }
+
+                const caseObj = items[targetCase];
+                if (caseObj.keyName && !user.inventory.includes(caseObj.keyName)) {
+                    user.inventory.push(caseObj.keyName);
+                }
+
+                // SIMULATE OPENING LOGIC
+                // We pick a random item from the case content.
+                // In real game, rarity logic is complex. Here we simplify for speed.
+                const content = caseObj.content.items;
+                const randomItemId = content[Math.floor(Math.random() * content.length)];
+
+                // Add to inventory
+                user.inventory.push(randomItemId);
+
+                // Stats
+                user.stats.opened_cases = (user.stats.opened_cases || 0) + 1;
+
+                // Check win
+                const wonItem = items[randomItemId];
+                if (wonItem.name.includes(targetItem) || wonItem.type.includes(targetItem)) {
+                    running = false;
+                    clearInterval(interval);
+                    noti.remove();
+                    alert(`BOT FINISHED! Found: ${wonItem.name}`);
+                    game.emit("update");
+                    return;
+                }
+
+                // Periodic update to not lag too much
+                if (user.stats.opened_cases % 20 === 0) game.emit("update");
+
+            }, speed);
+        };
+
+        // --- MISC ---
+        win.mod_getSave = () => {
+            prompt("Copy your save:", localStorage.localsave);
+        };
+        win.mod_loadSave = () => {
+            const s = prompt("Paste save:");
+            if (s) {
+                localStorage.localsave = s;
+                window.location.reload();
+            }
+        };
+        win.mod_trueWipe = () => {
+            if(confirm("FULL WIPE? Cannot be undone.")) {
+                localStorage.clear();
+                window.location.reload();
+            }
+        };
+        win.mod_multiTab = () => {
+            localStorage.removeItem('lastSeen');
+            const orig = win.setInterval;
+            win.setInterval = function(func, delay){
+                if (func && func.toString && func.toString().includes('lastSeen')) return;
+                return orig.apply(win, arguments);
+            };
+            alert("Multi Tab detection disabled (try refreshing if not working)");
+        };
+        win.mod_setTitle = () => {
+            document.title = prompt("New Title:", "TROLL MENU");
+        };
+        win.mod_hidePredator = () => {
+            alert("Predator Menu Hidden (if it existed)");
+        };
+        win.mod_scriptExecutor = () => {
+            try {
+                win.eval(prompt("Execute JS:"));
+            } catch(e) { alert(e); }
+        };
+        win.mod_versionCheck = () => {
+            alert("Mod Menu Version 1.5\nGame Version 2.19");
+        };
+        win.mod_fakeCodes = () => {
+            alert("Generated code: FREEMONEY-" + Math.floor(Math.random()*1000));
+        };
+
+        // --- INVENTORY DUPE SPECIFIC ---
+        win.mod_dupeSpecific = () => {
+            const menu = document.getElementById('mod-menu');
+            if (!menu) return;
+
+            // Visual indication
+            menu.style.opacity = '0.3';
+            menu.style.pointerEvents = 'none';
+            document.body.style.cursor = 'crosshair';
+
+            // Add style for highlighting
+            const styleId = 'mod-dupe-style';
+            if (!document.getElementById(styleId)) {
+                const s = document.createElement('style');
+                s.id = styleId;
+                s.innerHTML = `
+                    .item:hover {
+                        outline: 4px solid #a0f !important;
+                        z-index: 10000 !important;
+                        cursor: copy !important;
+                        transform: scale(1.05);
+                        box-shadow: 0 0 15px #a0f;
+                    }
+                `;
+                document.head.appendChild(s);
+            }
+
+            function handleClick(e) {
+                // Stop everything
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+
+                const itemEl = e.target.closest('.item');
+                if (itemEl) {
+                    const nameEl = itemEl.querySelector('.item-name');
+                    let name = nameEl ? nameEl.innerText.trim() : null;
+
+                    if (name) {
+                        // Check if valid
+                        let validName = name;
+
+                        // 1. Try exact match
+                        if (!items[validName]) {
+                            // 2. Try cleanup (newlines/spaces)
+                            const cleanName = name.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
+                            if (items[cleanName]) {
+                                validName = cleanName;
+                            } else {
+                                // 3. Try to find the closest key in items database
+                                // Many items like "Dragon Lore" might be "AWP | Dragon Lore (Factory New)"
+                                // We need to check if 'name' is part of any item key
+                                const found = Object.keys(items).find(k => k.includes(name) || name.includes(k));
+
+                                if (found) {
+                                    console.log(`Fuzzy match: "${name}" -> "${found}"`);
+                                    validName = found;
+                                } else {
+                                    // 4. Force bypass if it exists in inventory already (trust the user's inventory)
+                                    // "Dupe Inventory" works because it just copies the string from the array
+                                    // So we should allow it if we can't verify it against DB but user clicked it
+                                    console.warn(`Item "${name}" not found in DB, but exists in DOM. Duping anyway as raw string.`);
+                                    validName = name;
+                                }
+                            }
+                        }
+
+                        // Small delay to allow browser to render confirm dialog cleanly
+                        setTimeout(() => {
+                            const countStr = prompt(`Duplicate "${validName}"? Enter amount:`, "1");
+                            if (countStr !== null) {
+                                const count = parseInt(countStr);
+                                if (!isNaN(count) && count > 0) {
+                                    for(let i=0; i<count; i++) user.inventory.push(validName);
+                                    alert(`Duplicated ${count}x ${validName}`);
+                                    game.emit("update");
+                                }
+                            }
+                            cleanup();
+                        }, 10);
+                    } else {
+                        alert("Could not find item name.");
+                        cleanup();
+                    }
+                } else {
+                    // Clicked outside item, just cancel
+                    cleanup();
+                }
+            }
+
+            function handleKey(e) {
+                if (e.key === "Escape") cleanup();
+            }
+
+            function cleanup() {
+                menu.style.opacity = '1';
+                menu.style.pointerEvents = 'auto';
+                document.body.style.cursor = 'default';
+                document.removeEventListener('click', handleClick, true);
+                document.removeEventListener('keydown', handleKey, true);
+                const s = document.getElementById(styleId);
+                if (s) s.remove();
+            }
+
+            // Use capture to ensure we get the event first
+            document.addEventListener('click', handleClick, true);
+            document.addEventListener('keydown', handleKey, true);
+        };
+
+        // --- MINIGAMES ---
+        win.mod_winCrash = () => {
+            const amount = 100000;
+            user.tokens += amount;
+            game.emit("update");
+            alert(`Simulated Crash Win! Added ${amount} chips.`);
+        };
+        win.mod_winRoulette = () => {
+            const amount = 100000;
+            user.tokens += amount;
+            game.emit("update");
+            alert(`Simulated Roulette Win! Added ${amount} chips.`);
+        };
+        win.mod_winMines = () => {
+            const amount = 100000;
+            user.tokens += amount;
+            game.emit("update");
+            alert(`Simulated Mines Win! Added ${amount} chips.`);
+        };
+        win.mod_winSlots = () => {
+            const amount = 100000;
+            user.tokens += amount;
+            game.emit("update");
+            alert(`Simulated Slots Win! Added ${amount} chips.`);
+        };
+
+        // --- RNG MANIPULATION ---
+        win.originalRandom = win.originalRandom || Math.random;
+
+        win.mod_rigRNGHigh = () => {
+            Math.random = () => 0.99;
+            alert("RNG Rigged: Always 0.99 (High). Good for Crash.");
+        };
+
+        win.mod_rigRNGLow = () => {
+            Math.random = () => 0.001;
+            alert("RNG Rigged: Always 0.001 (Low).");
+        };
+
+        win.mod_resetRNG = () => {
+            Math.random = win.originalRandom;
+            alert("RNG Reset to Normal.");
+        };
+
+
+        // -------------------------------------------------------------------------
+        // 4. DRAGGABLE LOGIC & CONTROLS
+        // -------------------------------------------------------------------------
+        const header = document.getElementById("mod-header");
+        const menu = document.getElementById("mod-menu");
+
+        // Main Menu Drag
+        if (header && menu) {
+            let isDragging = false;
+            let offsetX, offsetY;
+
+            header.addEventListener("mousedown", (e) => {
+                if (e.target.classList.contains('close-btn')) return;
+                isDragging = true;
+                offsetX = e.clientX - menu.offsetLeft;
+                offsetY = e.clientY - menu.offsetTop;
+            });
+
+            document.addEventListener("mousemove", (e) => {
+                if (isDragging) {
+                    menu.style.left = (e.clientX - offsetX) + "px";
+                    menu.style.top = (e.clientY - offsetY) + "px";
+                }
+            });
+
+            document.addEventListener("mouseup", () => {
+                isDragging = false;
+            });
+        }
+
+        // Overlay Drag
+        const ovHeader = document.getElementById("overlay-header");
+        const ovMenu = document.getElementById("overlay-menu");
+
+        if (ovHeader && ovMenu) {
+            let isDragging = false;
+            let offsetX, offsetY;
+
+            ovHeader.addEventListener("mousedown", (e) => {
+                isDragging = true;
+                offsetX = e.clientX - ovMenu.offsetLeft;
+                offsetY = e.clientY - ovMenu.offsetTop;
+            });
+
+            document.addEventListener("mousemove", (e) => {
+                if (isDragging) {
+                    ovMenu.style.left = (e.clientX - offsetX) + "px";
+                    ovMenu.style.top = (e.clientY - offsetY) + "px";
+                }
+            });
+
+            document.addEventListener("mouseup", () => {
+                isDragging = false;
+            });
+        }
+
+        // Keybinds with capture phase to ensure we get the event first
+        document.addEventListener("keydown", (e) => {
+            if (e.code === "KeyN" || e.key === "N" || e.key === "n") {
+                // Ignore if typing in an input field
+                if (document.activeElement.tagName === "INPUT" || document.activeElement.tagName === "TEXTAREA") return;
+
+                e.preventDefault(); // Prevent game from using 'N'
+                e.stopPropagation();
+                win.toggleMenu();
+            }
+            if (e.code === "KeyJ" || e.key === "J" || e.key === "j") {
+                 if (document.activeElement.tagName === "INPUT") return;
+                 win.toggleOverlay();
+            }
+        }, true); // Use capture phase
+
+        console.log("Mod Menu Loaded! Press N to open.");
+
+        // Show notification
+        const noti = document.createElement('div');
+        noti.style.position = 'fixed';
+        noti.style.top = '10px';
+        noti.style.left = '50%';
+        noti.style.transform = 'translateX(-50%)';
+        noti.style.background = 'rgba(14, 15, 24, 0.78)';
+        noti.style.border = '1px solid rgba(255, 45, 125, 0.55)';
+        noti.style.backdropFilter = 'blur(10px)';
+        noti.style.webkitBackdropFilter = 'blur(10px)';
+        noti.style.boxShadow = '0 16px 50px rgba(0,0,0,0.65)';
+        noti.style.color = 'rgba(255,255,255,0.92)';
+        noti.style.padding = '10px 14px';
+        noti.style.borderRadius = '12px';
+        noti.style.fontWeight = '700';
+        noti.style.letterSpacing = '.3px';
+        noti.style.zIndex = '2147483647'; // Max Z-Index
+        noti.style.cursor = 'pointer';
+        noti.innerText = "Mod Menu Loaded! Click here or Press 'N'";
+        noti.onclick = win.toggleMenu;
+        document.body.appendChild(noti);
+
+        // Auto-hide notification but keep a small toggle button
+        setTimeout(() => {
+            noti.innerText = "M";
+            noti.style.left = '10px';
+            noti.style.top = '10px';
+            noti.style.transform = 'none';
+            noti.style.width = '30px';
+            noti.style.height = '30px';
+            noti.style.padding = '0';
+            noti.style.display = 'flex';
+            noti.style.alignItems = 'center';
+            noti.style.justifyContent = 'center';
+            noti.style.opacity = '0.5';
+            noti.style.borderRadius = '10px';
+        }, 5000);
+
+    }
+
+    // Run initialization
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initModMenu);
+    } else {
+        initModMenu();
+    }
+
+})();
+}, seed)}
+//# sourceURL=chrome-extension://dhdgffkkebhmkfjojejmpbldmpobfkfo/userscript.html?name=CSGO-Clicker-Mod-Menu.user.js&id=90cf973c-2bf5-4f52-8271-b23e027a13a8
+}
